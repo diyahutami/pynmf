@@ -24,7 +24,7 @@ class ORTHOGONAL(PyNMFBase):
     ORTHOGONAL(data, num_bases=4, niter=10, orthogonal='A')
     Orthogonal Non-negative Matrix Tri-factorizations for Clustering
     Orthogonal NMF factorize a data matrix into 3 matrices
-    s.t. F = | data - W*S*H | = | is minimal. W, S and H are restricted to non-negativ data. 
+    s.t. F = | data - A*S*Y | = | is minimal. A, S and Y are restricted to non-negativ data. 
     Uses the classicial multiplicative update rule.
 
     Parameters
@@ -45,9 +45,9 @@ class ORTHOGONAL(PyNMFBase):
 
     Attributes
     ----------
-    W : "data_dimension x num_bases" matrix of basis vectors
-    S: "num_bases x num_bases" matrix, absorb the values due to orthonormality of W and H.
-    H : "num bases x num_samples" matrix of coefficients
+    A : "data_dimension x num_bases" matrix of basis vectors
+    S : "num_bases x num_bases" matrix, absorb the values due to orthonormality of A and Y.
+    Y : "num bases x num_samples" matrix of coefficients
     ferr : frobenius norm (after calling .factorize())  
 
     """
@@ -58,81 +58,81 @@ class ORTHOGONAL(PyNMFBase):
 
     def _init_s(self):
         if (self.orthogonal=='AY'):
-            self.S= np.dot(np.dot(self.W.T, self.data[:,:]), self.H.T)
+            self.S= np.dot(np.dot(self.A.T, self.data[:,:]), self.Y.T)
         else:
             self.S= np.eye(self._num_bases, self._num_bases)
 
-    def _update_w(self):
-        # pre init W1, and W2 (necessary for storing matrices on disk)
+    def _update_A(self):
+        # pre init A1, and A2 (necessary for storing matrices on disk)
         if (self.orthogonal == 'A' or self.orthogonal == 'AY'):
-            W1 = np.dot(np.dot(np.dot(np.dot(self.W, self.W.T), self.data[:,:]), self.H.T), self.S.T) + 10**-9
-            W2= np.dot(np.dot(self.data[:,:], self.H.T), self.S.T)/W1
-            self.W *= W2
+            A1 = np.dot(np.dot(np.dot(np.dot(self.A, self.A.T), self.data[:,:]), self.Y.T), self.S.T) + 10**-9
+            A2= np.dot(np.dot(self.data[:,:], self.Y.T), self.S.T)/A1
+            self.A *= A2
             
         elif (self.orthogonal == 'Y'):
-            W1 = np.dot(np.dot(self.W, self.H), self.H.T) + 10**-9
-            W2 = np.dot(self.data[:,:], self.H.T)/W1
-            self.W *= W2
+            A1 = np.dot(np.dot(self.A, self.Y), self.Y.T) + 10**-9
+            A2 = np.dot(self.data[:,:], self.Y.T)/A1
+            self.A *= A2
             
             # to normalize
-            # self.W /= np.sqrt(np.sum(self.W**2.0, axis=0))
+            # self.A /= np.sqrt(np.sum(self.A**2.0, axis=0))
 
         else:
             print("please insert orthogonal constraint")
 
-    def _update_h(self):
-        # pre init H1, and H2 (necessary for storing matrices on disk)
+    def _update_y(self):
+        # pre init Y1, and Y2 (necessary for storing matrices on disk)
         if (self.orthogonal == 'Y' or self.orthogonal == 'AY'):
-            H1 = np.dot(np.dot(np.dot(self.S.T, self.W.T), self.data[:,:]), np.dot(self.H.T, self.H))+ 10**-9
-            H2 = np.dot(np.dot(self.S.T, self.W.T), self.data[:,:])/H1
-            self.H *= H2
+            Y1 = np.dot(np.dot(np.dot(self.S.T, self.A.T), self.data[:,:]), np.dot(self.Y.T, self.Y))+ 10**-9
+            Y2 = np.dot(np.dot(self.S.T, self.A.T), self.data[:,:])/Y1
+            self.Y *= Y2
 
         elif (self.orthogonal == 'A'):
-            H1 = np.dot(np.dot(self.W.T, self.W), self.H) + 10**-9
-            H2 = np.dot(self.W.T, self.data[:,:])/H1
-            self.H *= H2
+            Y1 = np.dot(np.dot(self.A.T, self.A), self.Y) + 10**-9
+            Y2 = np.dot(self.A.T, self.data[:,:])/Y1
+            self.Y *= Y2
             # to normalize
-            # self.H /= np.sqrt(np.sum(self.H**2.0, axis=0))
+            # self.Y /= np.sqrt(np.sum(self.Y**2.0, axis=0))
             
         else:
             print("please insert orthogonal constraint")
 
     def _update_s(self):
         if (self.orthogonal == 'AY'):
-            S1 = np.dot(np.dot(np.dot(self.W.T, self.W), self.S), np.dot(self.H, self.H.T)) + 10**-9
-            S2 = np.dot(np.dot(self.W.T, self.data[:,:]), self.H.T)/S1
+            S1 = np.dot(np.dot(np.dot(self.A.T, self.A), self.S), np.dot(self.Y, self.Y.T)) + 10**-9
+            S2 = np.dot(np.dot(self.A.T, self.data[:,:]), self.Y.T)/S1
             self.S *= S2
         else:
             self.S = self.S
 
 
     def frobenius_norm(self):
-        """ Frobenius norm (||data - WSH||) of a data matrix and a low rank
-        approximation given by WSH. Minimizing the Fnorm ist the most common
+        """ Frobenius norm (||data - ASY||) of a data matrix and a low rank
+        approximation given by ASY. Minimizing the Fnorm ist the most common
         optimization criterion for matrix factorization methods.
 
         Returns:
         -------
-        frobenius norm: F = || data - W*S*H||
+        frobenius norm: F = || data - A*S*Y||
 
         """
-        # check if W S and H exist
-        if hasattr(self,'W') and hasattr(self,'S') and hasattr(self,'H'):
+        # check if A S and Y exist
+        if hasattr(self,'A') and hasattr(self,'S') and hasattr(self,'Y'):
             if scipy.sparse.issparse(self.data):
-                tmp = self.data[:,:] - ((self.W * self.S) * self.H)
+                tmp = self.data[:,:] - ((self.A * self.S) * self.Y)
                 tmp = tmp.multiply(tmp).sum()
                 err = tmp
                 #err = np.sqrt(tmp)
             else:
-                err = np.sum((self.data[:,:] - np.dot(np.dot(self.W, self.S), self.H))**2 )
-                #err = np.sqrt( np.sum((self.data[:,:] - np.dot(np.dot(self.W, self.S), self.H))**2 ))
+                err = np.sum((self.data[:,:] - np.dot(np.dot(self.A, self.S), self.Y))**2 )
+                #err = np.sqrt( np.sum((self.data[:,:] - np.dot(np.dot(self.A, self.S), self.Y))**2 ))
         else:
             err = None
 
         return err            
     
-    def factorize(self, niter=100, show_progress=False, compute_w=True, compute_h=True, compute_s=True, compute_err=True, epoch_hook=None):
-        """ Factorize s.t. WsH = data
+    def factorize(self, niter=100, show_progress=False, compute_a=True, compute_y=True, compute_s=True, compute_err=True, epoch_hook=None):
+        """ Factorize s.t. ASY = data
 
         Parameters
         ----------
@@ -140,24 +140,24 @@ class ORTHOGONAL(PyNMFBase):
                 number of iterations.
         show_progress : bool
                 print some extra information to stdout.
-        compute_w : bool
-                iteratively update values for W.
-        compute_h : bool
-                iteratively update values for H.
+        compute_a : bool
+                iteratively update values for A.
+        compute_y : bool
+                iteratively update values for Y.
         compute_s : bool
                 iteratively update values for S.
         compute_err : bool
-                compute Frobenius norm |data-WSH| after each update and store
+                compute Frobenius norm |data-ASY| after each update and store
                 it to .ferr[k].
         epoch_hook : function
                 If this exists, evaluate it every iteration
 
         Updated Values
         --------------
-        .W : updated values for W.
-        .H : updated values for H.
+        .A : updated values for A.
+        .Y : updated values for Y.
         .S : updated values for S.
-        .ferr : Frobenius norm |data-WSH| for each iteration.
+        .ferr : Frobenius norm |data-ASY| for each iteration.
         """
 
         if show_progress:
@@ -167,11 +167,11 @@ class ORTHOGONAL(PyNMFBase):
 
         # create W and H if they don't already exist
         # -> any custom initialization to W,H and S should be done before
-        if not hasattr(self,'W') and compute_w:
-            self._init_w()
+        if not hasattr(self,'A') and compute_a:
+            self._init_a()
 
-        if not hasattr(self,'H') and compute_h:
-            self._init_h()
+        if not hasattr(self,'Y') and compute_y:
+            self._init_y()
 
         if not hasattr(self,'S') and compute_s:
             self._init_s()
@@ -182,11 +182,11 @@ class ORTHOGONAL(PyNMFBase):
             self.ferr = np.zeros(self._niter)
 
         for i in range(self._niter):
-            if compute_w:
-                self._update_w()
+            if compute_a:
+                self._update_A()
 
-            if compute_h:
-                self._update_h()
+            if compute_y:
+                self._update_y()
 
             if compute_s:
                 self._update_s()

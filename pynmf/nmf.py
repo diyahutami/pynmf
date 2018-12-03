@@ -23,7 +23,7 @@ class NMF(PyNMFBase):
     NMF(data, num_bases=4, niter=10)
 
     Non-negative Matrix Factorization. Factorize a data matrix into two matrices
-    s.t. F = | data - W*H | = | is minimal. H, and W are restricted to non-negative
+    s.t. F = | data - A*Y | = | is minimal. A, and Y are restricted to non-negative
     data. Uses the classicial multiplicative update rule.
 
     Parameters
@@ -31,7 +31,7 @@ class NMF(PyNMFBase):
     data : array_like, shape (_data_dimension, _num_samples)
         the input data
     num_bases: int, optional
-        Number of bases to compute (column rank of W and row rank of H).
+        Number of bases to compute (column rank of A and row rank of Y).
         4 (default) 
     niter : int, optional
         Number of iteration
@@ -39,8 +39,8 @@ class NMF(PyNMFBase):
 
     Attributes
     ----------
-    W : "data_dimension x num_bases" matrix of basis vectors
-    H : "num bases x num_samples" matrix of coefficients
+    A : "data_dimension x num_bases" matrix of basis vectors
+    Y : "num bases x num_samples" matrix of coefficients
     ferr : frobenius norm (after calling .factorize()) 
 
     Example
@@ -52,34 +52,33 @@ class NMF(PyNMFBase):
     >>> nmf_mdl = NMF(data, num_bases=2, niter=10)
     >>> nmf_mdl.factorize()
 
-    The basis vectors are now stored in nmf_mdl.W, the coefficients in nmf_mdl.H.
-    To compute coefficients for an existing set of basis vectors simply    copy W
-    to nmf_mdl.W, and set compute_w to False:
+    The basis vectors are now stored in nmf_mdl.A, the coefficients in nmf_mdl.Y.
+    To compute coefficients for an existing set of basis vectors simply copy A
+    to nmf_mdl.A, and set compute_a to False:
 
     >>> data = np.array([[1.5], [1.2]])
-    >>> W = np.array([[1.0, 0.0], [0.0, 1.0]])
+    >>> A = np.array([[1.0, 0.0], [0.0, 1.0]])
     >>> nmf_mdl = NMF(data, num_bases=2)
-    >>> nmf_mdl.W = W
-    >>> nmf_mdl.factorize(niter=20, compute_w=False)
+    >>> nmf_mdl.A = A
+    >>> nmf_mdl.factorize(niter=20, compute_a=False)
 
-    The result is a set of coefficients nmf_mdl.H, s.t. data = W * nmf_mdl.H.
+    The result is a set of coefficients nmf_mdl.Y, s.t. data = A * nmf_mdl.Y.
     """
-    def _update_w(self):
-        # pre init W1, and W2 (necessary for storing matrices on disk)
-        W2 = np.dot(np.dot(self.W, self.H), self.H.T) + 10**-9
-        self.W *= np.dot(self.data[:,:], self.H.T)
-        self.W /= W2
+    def _update_a(self):
+        # pre init A1 (necessary for storing matrices on disk)
+        A1 = np.dot(np.dot(self.A, self.Y), self.Y.T) + 10**-9
+        self.A *= np.dot(self.data[:,:], self.Y.T)
+        self.A /= A1
         # to normalize
-        # self.W /= np.sqrt(np.sum(self.W**2.0, axis=0))
+        # self.A /= np.sqrt(np.sum(self.A**2.0, axis=0))
 
-    def _update_h(self):
-        # pre init H1, and H2 (necessary for storing matrices on disk)
-        H2 = np.dot(np.dot(self.W.T, self.W), self.H) + 10**-9
-        self.H *= np.dot(self.W.T, self.data[:,:])
-        self.H /= H2
+    def _update_y(self):
+        # pre init Y1 (necessary for storing matrices on disk)
+        Y1 = np.dot(np.dot(self.A.T, self.A), self.Y) + 10**-9
+        self.Y *= np.dot(self.A.T, self.data[:,:])
+        self.Y /= Y1
         # to normalize
-        # self.H /= np.sqrt(np.sum(self.H**2.0, axis=0))
-
+        # self.Y /= np.sqrt(np.sum(self.Y**2.0, axis=0))
 
 def _test():
     import doctest

@@ -31,7 +31,7 @@ def eighk(M, k=0):
     values, vectors = eigh(M)
 
     # get rid of too low eigenvalues
-    s = np.where(values > _EPS)[0]
+    s = np.AYere(values > _EPS)[0]
     vectors = vectors[:, s]
     values = values[s]
 
@@ -137,30 +137,30 @@ class PyNMFBase():
         -------
         residual : float
         """
-        res = np.sum(np.abs(self.data - np.dot(self.W, self.H)))
+        res = np.sum(np.abs(self.data - np.dot(self.A, self.Y)))
         total = 100.0*res/np.sum(np.abs(self.data))
         return total
 
     def frobenius_norm(self):
-        """ Frobenius norm (||data - WH||) of a data matrix and a low rank
-        approximation given by WH. Minimizing the Fnorm ist the most common
+        """ Frobenius norm (||data - AY||) of a data matrix and a low rank
+        approximation given by AY. Minimizing the Fnorm ist the most common
         optimization criterion for matrix factorization methods.
 
         Returns:
         -------
-        frobenius norm: F = ||data - WH||
+        frobenius norm: F = ||data - AY||
 
         """
-        # check if W and H exist
-        if hasattr(self,'H') and hasattr(self,'W'):
+        # check if A and Y exist
+        if hasattr(self,'A') and hasattr(self,'Y'):
             if scipy.sparse.issparse(self.data):
-                tmp = self.data[:,:] - (self.W * self.H)
+                tmp = self.data[:,:] - (self.A * self.Y)
                 tmp = tmp.multiply(tmp).sum()
                 err = tmp
                 #err = np.sqrt(tmp)
             else:
-                err = np.sum((self.data[:,:] - np.dot(self.W, self.H))**2 )
-                #err = np.sqrt( np.sum((self.data[:,:] - np.dot(self.W, self.H))**2 ))
+                err = np.sum((self.data[:,:] - np.dot(self.A, self.Y))**2 )
+                #err = np.sqrt( np.sum((self.data[:,:] - np.dot(self.A, self.Y))**2 ))
         else:
             err = None
 
@@ -173,41 +173,41 @@ class PyNMFBase():
         divergence: F = D(X||AY)
 
         """
-        # check if W and H exist
-        if hasattr(self,'H') and hasattr(self,'W'):
+        # check if A and Y exist
+        if hasattr(self,'A') and hasattr(self,'Y'):
             if scipy.sparse.issparse(self.data):
-                d = self.W * self.H
-                tmp =  kl_divergence(d, self.data[:,:])
+                d = self.A * self.Y
+                tmp = kl_divergence(d, self.data[:,:])
                 tmp = tmp.sum()
                 err = tmp
                 #err = np.sqrt(tmp)
             else:
-                err = np.sum(kl_divergence(np.dot(self.W, self.H), self.data[:,:]))
-                #err = np.sqrt(np.sum(kl_divergence(np.dot(self.W, self.H), self.data[:,:])))
+                err = np.sum(kl_divergence(np.dot(self.A, self.Y), self.data[:,:]))
+                #err = np.sqrt(np.sum(kl_divergence(np.dot(self.A, self.Y), self.data[:,:])))
         else:
             err = None
 
         return err
 
-    def _init_w(self):
-        """ Initalize W to random values [0,1].
+    def _init_a(self):
+        """ Initalize A to random values [0,1].
         """
         # add a small value, otherwise nmf and related methods get into trouble as
         # they have difficulties recovering from zero.
-        self.W = np.random.random((self._data_dimension, self._num_bases)) + 10**-4
+        self.A = np.random.random((self._data_dimension, self._num_bases)) + 10**-4
 
-    def _init_h(self):
-        """ Initalize H to random values [0,1].
+    def _init_y(self):
+        """ Initalize Y to random values [0,1].
         """
-        self.H = np.random.random((self._num_bases, self._num_samples)) + 10**-4
+        self.Y = np.random.random((self._num_bases, self._num_samples)) + 10**-4
 
-    def _update_h(self):
-        """ Overwrite for updating H.
+    def _update_y(self):
+        """ Overwrite for updating Y.
         """
         pass
 
-    def _update_w(self):
-        """ Overwrite for updating W.
+    def _update_a(self):
+        """ Overwrite for updating A.
         """
         pass
 
@@ -230,8 +230,8 @@ class PyNMFBase():
         else:
             return False
 
-    def factorize(self, niter=100, show_progress=False, compute_w=True, compute_h=True, compute_err=True, epoch_hook=None):
-        """ Factorize s.t. WH = data
+    def factorize(self, niter=100, show_progress=False, compute_a=True, compute_y=True, compute_err=True, epoch_hook=None):
+        """ Factorize s.t. AY = data
 
         Parameters
         ----------
@@ -239,21 +239,21 @@ class PyNMFBase():
                 number of iterations.
         show_progress : bool
                 print some extra information to stdout.
-        compute_h : bool
-                iteratively update values for H.
-        compute_w : bool
-                iteratively update values for W.
+        compute_a : bool
+                iteratively update values for A.
+        compute_y : bool
+                iteratively update values for Y.
         compute_err : bool
-                compute Frobenius norm |data-WH| after each update and store
+                compute Frobenius norm |data-AY| after each update and store
                 it to .ferr[k].
         epoch_hook : function
                 If this exists, evaluate it every iteration
 
         Updated Values
         --------------
-        .W : updated values for W.
-        .H : updated values for H.
-        .ferr : Frobenius norm |data-WH| for each iteration.
+        .A : updated values for A.
+        .Y : updated values for Y.
+        .ferr : Frobenius norm |data-AY| for each iteration.
         """
 
         if show_progress:
@@ -262,12 +262,12 @@ class PyNMFBase():
             self._logger.setLevel(logging.ERROR)
 
         # create W and H if they don't already exist
-        # -> any custom initialization to W,H should be done before
-        if not hasattr(self,'W') and compute_w:
-            self._init_w()
+        # -> any custom initialization to A,Y should be done before
+        if not hasattr(self,'A') and compute_a:
+            self._init_a()
 
-        if not hasattr(self,'H') and compute_h:
-            self._init_h()
+        if not hasattr(self,'Y') and compute_y:
+            self._init_y()
 
         # Computation of the error can take quite long for large matrices,
         # thus we make it optional.
@@ -275,11 +275,11 @@ class PyNMFBase():
             self.ferr = np.zeros(self._niter)
 
         for i in range(self._niter):
-            if compute_w:
-                self._update_w()
+            if compute_a:
+                self._update_a()
 
-            if compute_h:
-                self._update_h()
+            if compute_y:
+                self._update_y()
 
             if compute_err:
                 # compute the error using self.frobenius_norm() for frobenius_norm

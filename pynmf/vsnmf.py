@@ -51,9 +51,7 @@ class VSNMF(PyNMFBase):
         1 (default)
     t2 : boolean value, optional ( 0 or 1)
         Value of t2 that indicate if non-negativity should or should not be enforced for H
-        1 (default)
-         
-
+        1 (default)     
     """
 
     def __init__(self, data, num_bases=4, niter=10, alfa1=0, alfa2=0, lambda1=0, lambda2=0, t1=1, t2=1, **kwargs):
@@ -66,26 +64,25 @@ class VSNMF(PyNMFBase):
         self.t1 = t1
         self.t2 = t2
 
-
     def frobenius_norm(self):
-        # check if W and H exist
-        if hasattr(self,'H') and hasattr(self,'W'):
+        # check if A and Y exist
+        if hasattr(self,'A') and hasattr(self,'Y'):
             if scipy.sparse.issparse(self.data):
-                tmp = self.data[:,:] - (self.W * self.H)
+                tmp = self.data[:,:] - (self.A * self.Y)
                 tmp = tmp.multiply(tmp).sum()
-                a2 = 0.5 * self.alfa2 * np.trace(self.W[:,:].T * self.W[:,:])
-                a1 = self.alfa1 * np.trace((np.matlib.repmat(np.array(1), self._data_dimension, self.num_bases).T) * self.W[:,:])
-                l2 = 0.5 * self.lambda2 * np.trace(self.H[:,:].T * self.H[:,:])
-                l1 = self.lambda1 * np.trace((np.matlib.repmat(np.array(1), self.num_bases, self._num_samples).T) * self.H[:,:])
+                a2 = 0.5 * self.alfa2 * np.trace(self.A[:,:].T * self.A[:,:])
+                a1 = self.alfa1 * np.trace((np.matlib.repmat(np.array(1), self._data_dimension, self.num_bases).T) * self.A[:,:])
+                l2 = 0.5 * self.lambda2 * np.trace(self.Y[:,:].T * self.Y[:,:])
+                l1 = self.lambda1 * np.trace((np.matlib.repmat(np.array(1), self.num_bases, self._num_samples).T) * self.Y[:,:])
                 err = (0.5*tmp) + a2 + a1 + l2 + l1
                 #err = (tmp) + a2 + a1 + l2 + l1
                 #err = np.sqrt(err)
             else:
-                tmp = np.sum((self.data[:,:] - np.dot(self.W, self.H))**2 ) 
-                a2 = 0.5 * self.alfa2 * np.trace(np.dot(self.W[:,:].T, self.W[:,:]))
-                a1 = self.alfa1 * np.trace(np.dot((np.matlib.repmat(np.array(1), self._data_dimension, self._num_bases).T), self.W[:,:]))
-                l2 = 0.5 * self.lambda2 * np.trace(np.dot(self.H[:,:].T, self.H[:,:]))
-                l1 = self.lambda1 * np.trace(np.dot((np.matlib.repmat(np.array(1), self._num_bases, self._num_samples).T), self.H[:,:]))
+                tmp = np.sum((self.data[:,:] - np.dot(self.A, self.Y))**2 ) 
+                a2 = 0.5 * self.alfa2 * np.trace(np.dot(self.A[:,:].T, self.A[:,:]))
+                a1 = self.alfa1 * np.trace(np.dot((np.matlib.repmat(np.array(1), self._data_dimension, self._num_bases).T), self.A[:,:]))
+                l2 = 0.5 * self.lambda2 * np.trace(np.dot(self.Y[:,:].T, self.Y[:,:]))
+                l1 = self.lambda1 * np.trace(np.dot((np.matlib.repmat(np.array(1), self._num_bases, self._num_samples).T), self.Y[:,:]))
                 err = (0.5*tmp) + a2 + a1 + l2 + l1
                 #err = (tmp) + a2 + a1 + l2 + l1
                 #err = np.sqrt(err)
@@ -95,52 +92,48 @@ class VSNMF(PyNMFBase):
         return err
 
     
-    def _update_w(self):
-        # pre init W2 (necessary for storing matrices on disk)
+    def _update_a(self):
+        # pre init A1 (necessary for storing matrices on disk)
         if (self.t1 == 1):
-            W2 = np.dot(np.dot(self.W, self.H), self.H.T) + (self.alfa2 * self.W) + (self.alfa1 * (np.matlib.repmat(np.array(1), self._data_dimension, self._num_bases))) + 10**-9
-            self.W *= np.dot(self.data[:,:], self.H.T)
-            self.W /= W2
-            # print('update w1')
+            A1 = np.dot(np.dot(self.A, self.Y), self.Y.T) + (self.alfa2 * self.A) + (self.alfa1 * (np.matlib.repmat(np.array(1), self._data_dimension, self._num_bases))) + 10**-9
+            self.A *= np.dot(self.data[:,:], self.Y.T)
+            self.A /= A1
             # to normalize
-            # self.W /= np.sqrt(np.sum(self.W**2.0, axis=0))
+            # self.A /= np.sqrt(np.sum(self.A**2.0, axis=0))
         
         elif self.t1 == 0 and self.alfa1 == 0:
-            W2 = np.linalg.inv(np.dot(self.H, self.H.T) + (self.alfa2 * np.identity(self._num_bases)))
-            self.W = np.dot(np.dot(self.data[:,:], self.H.T), W2)
+            A1 = np.linalg.inv(np.dot(self.Y, self.Y.T) + (self.alfa2 * np.identity(self._num_bases)))
+            self.A = np.dot(np.dot(self.data[:,:], self.Y.T), A1)
 
         elif self.t1 == 0:
-            W2 = np.dot(np.dot(self.W, self.H), self.H.T) + (self.alfa2 * self.W) + (self.alfa1 * (np.matlib.repmat(np.array(1), self._data_dimension, self._num_bases))) + 10**-9
-            self.W *= ( np.dot(self.data[:,:], self.H.T) + (self.alfa1 * (np.matlib.repmat(np.array(1), self._data_dimension, self._num_bases))) ) 
-            self.W /= W2  
-            # print('update w3')
+            A1 = np.dot(np.dot(self.A, self.Y), self.Y.T) + (self.alfa2 * self.A) + (self.alfa1 * (np.matlib.repmat(np.array(1), self._data_dimension, self._num_bases))) + 10**-9
+            self.A *= ( np.dot(self.data[:,:], self.Y.T) + (self.alfa1 * (np.matlib.repmat(np.array(1), self._data_dimension, self._num_bases))) ) 
+            self.A /= A1  
             # to normalize
-            # self.W /= np.sqrt(np.sum(self.W**2.0, axis=0))
+            # self.A /= np.sqrt(np.sum(self.A**2.0, axis=0))
 
         else:
             print("t1 value must be 0 or 1")
             
     def _update_h(self):
-        # pre init H2 (necessary for storing matrices on disk)
+        # pre init Y1 (necessary for storing matrices on disk)
         if (self.t2 == 1):
-            H2 = np.dot(np.dot(self.W.T, self.W), self.H) + (self.lambda2 * self.H) + (self.lambda1 * (np.matlib.repmat(np.array(1), self._num_bases, self._num_samples))) + 10**-9
-            self.H *= np.dot(self.W.T, self.data[:,:])
-            self.H /= H2
-            # print('update h1')
+            Y1 = np.dot(np.dot(self.A.T, self.A), self.Y) + (self.lambda2 * self.Y) + (self.lambda1 * (np.matlib.repmat(np.array(1), self._num_bases, self._num_samples))) + 10**-9
+            self.Y *= np.dot(self.A.T, self.data[:,:])
+            self.Y /= Y1
             # to normalize
-            # self.H /= np.sqrt(np.sum(self.H**2.0, axis=0))
+            # self.Y /= np.sqrt(np.sum(self.Y**2.0, axis=0))
         
         elif self.t2 == 0 and self.lambda1 == 0:
-            H2 = np.linalg.inv(np.dot(self.W.T, self.W) + (self.lambda2 * np.identity(self._num_bases)))
-            self.H = np.dot(H2, np.dot(self.W.T, self.data[:,:]))
+            Y1 = np.linalg.inv(np.dot(self.A.T, self.A) + (self.lambda2 * np.identity(self._num_bases)))
+            self.Y = np.dot(Y1, np.dot(self.A.T, self.data[:,:]))
 
         elif self.t2 == 0:
-            H2 = np.dot(np.dot(self.W.T, self.W), self.H) + (self.lambda2 * self.H) + (self.lambda1 * (np.matlib.repmat(np.array(1), self._num_bases, self._num_samples))) + 10**-9
-            self.H *= ( np.dot(self.W.T, self.data[:,:]) + (self.lambda1 * (np.matlib.repmat(np.array(1), self._num_bases, self._num_samples))) )
-            self.H /= H2
-            # print('update h3')
+            Y1 = np.dot(np.dot(self.A.T, self.A), self.Y) + (self.lambda2 * self.Y) + (self.lambda1 * (np.matlib.repmat(np.array(1), self._num_bases, self._num_samples))) + 10**-9
+            self.Y *= ( np.dot(self.A.T, self.data[:,:]) + (self.lambda1 * (np.matlib.repmat(np.array(1), self._num_bases, self._num_samples))) )
+            self.Y /= Y1
             # to normalize
-            # self.H /= np.sqrt(np.sum(self.H**2.0, axis=0))
+            # self.Y /= np.sqrt(np.sum(self.Y**2.0, axis=0))
 
         else:
             print("t2 value must be 0 or 1")
