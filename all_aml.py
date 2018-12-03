@@ -81,7 +81,7 @@ def run():
     #nmf_mdl = VSNMF(data, num_bases=2, niter=100, alfa1=0, alfa2=0, lambda1=0, lambda2=0, t1=1, t2=1)
     
     #Orthogonal NMF
-    #nmf_mdl = ORTHOGONAL(data, num_bases=2, niter=100, orthogonal='A')
+    #nmf_mdl = ORTHOGONAL(data, num_bases=2, niter=100, orthogonal='AY')
     
     nmf_mdl.factorize()
     # print(data)
