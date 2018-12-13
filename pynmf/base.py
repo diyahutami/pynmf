@@ -156,11 +156,11 @@ class PyNMFBase():
             if scipy.sparse.issparse(self.data):
                 tmp = self.data[:,:] - (self.A * self.Y)
                 tmp = tmp.multiply(tmp).sum()
-                err = tmp
-                #err = np.sqrt(tmp)
+                #err = tmp
+                err = np.sqrt(tmp)
             else:
-                err = np.sum((self.data[:,:] - np.dot(self.A, self.Y))**2 )
-                #err = np.sqrt( np.sum((self.data[:,:] - np.dot(self.A, self.Y))**2 ))
+                #err = np.sum((self.data[:,:] - np.dot(self.A, self.Y))**2 )
+                err = np.sqrt( np.sum((self.data[:,:] - np.dot(self.A, self.Y))**2 ))
         else:
             err = None
 

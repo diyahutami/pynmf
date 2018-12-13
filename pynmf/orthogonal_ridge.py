@@ -1,7 +1,8 @@
 """
-PyNMF Orthogonal Non-negative Matrix Factorization
+PyNMF Orthogonal Non-negative Matrix Factorization using Ridge Term
 
-    ORTNMF: Orthogonal Non-negative Matrix Factorization
+    ORTNMF: Orthogonal Non-negative Matrix Factorization using Ridge Term
+
 [1] C.Ding, T.Li, W.Peng, and H.Park, "Orthogonal nonnegative matrix t-factorization for clustering",
 in Proc. 12th ACM SIGKDD Int. Conf. Know. Discovery Data Mining, 2006, PP.126-135
 [2] Choi, S.: Algorithms for orthogonal nonnegative matrix factorization. 
@@ -15,13 +16,13 @@ from .base import PyNMFBase
 import numpy.matlib
 import numpy.linalg
 
-__all__ = ["ORTHOGONAL"]
+__all__ = ["L2ORTHOGONAL"]
 
 
-class ORTHOGONAL(PyNMFBase):
+class L2ORTHOGONAL(PyNMFBase):
     """
-    ORTHOGONAL(data, num_bases=4, niter=10,  orthogonal='A')
-    Orthogonal Non-negative Matrix Factorizations for Clustering
+    L2ORTHOGONAL(data, num_bases=4, niter=10, alpha_a= 0, alpha_y=0, orthogonal='A')
+    Orthogonal Non-negative Matrix Factorizations using Ridge Term for Clustering
     Orthogonal NMF factorize a data matrix into 2 matrices
     s.t. F = | data - A*Y | = | is minimal. A and Y are restricted to non-negative data. 
     Uses the classicial multiplicative update rule.
@@ -36,6 +37,12 @@ class ORTHOGONAL(PyNMFBase):
     niter: int, optional
         Number of iteration
         10 (default)
+    alpha_a : float, optional
+        tuning parameter for ridge term (l2 regularization) in A
+        0(default)
+    alpha_y : 
+        tuning parameter for ridge term (l2 regularization) in A
+        0(default)
     orthogonal : 'A' or 'Y'
         A : enforce orthogonal constraint on A (one-side orthogonal) 
         Y : enforce orthogonal constraint on Y (one-side orthogonal)
@@ -49,22 +56,23 @@ class ORTHOGONAL(PyNMFBase):
 
     """
 
-    def __init__(self, data, num_bases=4, niter=10, orthogonal='A', **kwargs):
+    def __init__(self, data, num_bases=4, niter=10, alpha_a= 0, alpha_y=0, orthogonal='A', **kwargs):
         PyNMFBase.__init__(self, data, num_bases, niter, **kwargs)
         self.orthogonal = orthogonal
-
+        self.alpha_a = alpha_a
+        self.alpha_y = alpha_y
 
     def _update_a(self):
         # pre init A1, and A2 (necessary for storing matrices on disk)
         if (self.orthogonal == 'A'):
-            A1 = np.dot(np.dot(np.dot(self.A, self.A.T), self.data[:,:]), self.Y.T) + 10**-9
+            A1 = np.dot(np.dot(np.dot(self.A, self.A.T), self.data[:,:]), self.Y.T) + self.alpha_a*self.A + 10**-9
             A2 = np.sqrt(np.dot(self.data[:,:], self.Y.T)/A1)
             self.A *= A2
             # to normalize
             # self.A /= np.sqrt(np.sum(self.A**2.0, axis=0))
             
         elif (self.orthogonal == 'Y'):
-            A1 = np.dot(np.dot(self.A, self.Y), self.Y.T) + 10**-9
+            A1 = np.dot(np.dot(self.A, self.Y), self.Y.T) + self.alpha_a*self.A + 10**-9
             A2 = np.dot(self.data[:,:], self.Y.T)/A1
             self.A *= A2
             # to normalize
@@ -76,12 +84,12 @@ class ORTHOGONAL(PyNMFBase):
     def _update_y(self):
         # pre init Y1, and Y2 (necessary for storing matrices on disk)
         if (self.orthogonal == 'Y'):
-            Y1 = np.dot(np.dot(np.dot(self.A.T, self.data[:,:]), self.Y.T), self.Y) + 10**-9
+            Y1 = np.dot(np.dot(np.dot(self.A.T, self.data[:,:]), self.Y.T), self.Y) +  self.alpha_y*self.Y + 10**-9
             Y2 = np.sqrt(np.dot(self.A.T, self.data[:,:])/Y1)
             self.Y *= Y2
 
         elif (self.orthogonal == 'A'):
-            Y1 = np.dot(np.dot(self.A.T, self.A), self.Y) + 10**-9
+            Y1 = np.dot(np.dot(self.A.T, self.A), self.Y) + self.alpha_y*self.Y + 10**-9
             Y2 = np.dot(self.A.T, self.data[:,:])/Y1
             self.Y *= Y2
             # to normalize
@@ -91,7 +99,7 @@ class ORTHOGONAL(PyNMFBase):
             print("please insert orthogonal constraint")    
     
     def factorize(self, niter=100, show_progress=False, compute_a=True, compute_y=True, compute_err=True, epoch_hook=None):
-        """ Factorize s.t. AY = data
+        """ Factorize s.t. ASY = data
 
         Parameters
         ----------
@@ -122,7 +130,7 @@ class ORTHOGONAL(PyNMFBase):
             self._logger.setLevel(logging.ERROR)
 
         # create A and Y if they don't already exist
-        # -> any custom initialization to A and Y hould be done before
+        # -> any custom initialization to A and Y should be done before
         if not hasattr(self,'A') and compute_a:
             self._init_a()
 

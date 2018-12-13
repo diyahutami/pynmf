@@ -5,6 +5,8 @@ np.set_printoptions(threshold=np.nan)
 from pynmf.nmf import NMF
 from pynmf.vsnmf import VSNMF
 from pynmf.orthogonal import ORTHOGONAL
+from pynmf.biorthogonal import BIORTHOGONAL
+from pynmf.orthogonal_ridge import L2ORTHOGONAL
 
 from scipy.cluster.hierarchy import linkage, leaves_list
 from scipy.spatial.distance import squareform
@@ -79,9 +81,15 @@ def run():
     
     #VSNMF
     #nmf_mdl = VSNMF(data, num_bases=2, niter=100, alfa1=0, alfa2=0, lambda1=0, lambda2=0, t1=1, t2=1)
-    
+
     #Orthogonal NMF
-    nmf_mdl = ORTHOGONAL(data, num_bases=2, niter=100, orthogonal='AY')
+    #nmf_mdl = ORTHOGONAL(data, num_bases=2, niter=100, orthogonal='Y')
+    
+    #Orthogonal NonNegative Tri-Factorization
+    #nmf_mdl = BIORTHOGONAL(data, num_bases=2, niter=100, orthogonal='AY')
+
+    #L2Orthogonal NMF
+    #nmf_mdl=L2ORTHOGONAL(data, num_bases=2, niter=100, orthogonal='Y', alpha_a=0.1, alpha_y=0.1)
     
     nmf_mdl.factorize()
     # print(data)
